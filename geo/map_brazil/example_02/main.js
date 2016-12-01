@@ -2,9 +2,13 @@
 // Define map size on screen
 (function(w){
 	var form = {
-		f: function() {
+		f: function(d) {
 		 	var select = document.getElementById("estados");
-			u.load("topo/" + select.value.toLowerCase() + ".json",true);
+		 	console.log(select.value.toLowerCase());
+		 	if(select.value.toLowerCase() == "todos")
+				u.load(u.config.municipios,true);
+		 	else 
+				u.load("topo/" + select.value.toLowerCase() + ".json",true);
 		 },
 		main: function (){
 		 	var body = d3.select("body");
@@ -24,7 +28,7 @@
 	},
 	u = {
 		ufs: ["Todos","AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT","PA","PB","PE","PI","PR","RJ","RN","RO","RR","RS","SC","SE","SP","TO"],
-		g: null,path: null, map: null, cor: null, reset: null,centered:null,
+		g: null,path: null, map: null, cor: null, reset: null,centered:null,zoom: null,svg: null,
 		getScreenSize: function (){
 		    var d = document,
 		    e = d.documentElement,
@@ -36,7 +40,40 @@
 		},
 		ready: function(error,shp){
 			if (error) throw error;
+
 			for (var j in shp.objects) {
+				u.size = d3.selectAll("g").node().getBBox();
+				//console.log(u.size);
+				/*var projection = d3.geoMercator()
+								   .scale(490 / 2 / Math.PI)
+								   .center(d3.geoCentroid(topojson.feature(shp,shp.objects[j])))
+								   .translate([u.getScreenSize().x/2, u.getScreenSize().y/2]),
+					path = d3.geoPath()
+							 .projection(projection);
+
+				u.path = path;*/
+				var center = d3.geoCentroid(topojson.feature(shp,shp.objects[j]));
+				var scale  = 100;
+				var offset = [u.getScreenSize().x/2, u.getScreenSize().y/2];
+				u.projection = d3.geoMercator().scale(scale).center(center)
+				.translate(offset);
+
+				// create the path
+				u.path = d3.geoPath().projection(u.projection);
+				// using the path determine the bounds of the current map and use 
+				// these to determine better values for the scale and translation
+				var bounds  = u.path.bounds(topojson.feature(shp,shp.objects[j]));
+				var hscale  = scale*u.getScreenSize().x  / (bounds[1][0] - bounds[0][0]);
+				var vscale  = scale*u.getScreenSize().y / (bounds[1][1] - bounds[0][1]);
+				var scale   = (hscale < vscale) ? hscale : vscale;
+				var offset  = [(u.getScreenSize().x - (bounds[0][0] + bounds[1][0])/2),
+				    (u.getScreenSize().y - (bounds[0][1] + bounds[1][1])/2) - 10];
+
+				// new projection
+				u.projection = d3.geoMercator().center(center)
+				.scale(scale - 500).translate(offset);
+				u.path = u.path.projection(u.projection);
+
 				u.g.selectAll("." + j)
 					.data(topojson.feature(shp,shp.objects[j]).features)
 					.enter()
@@ -51,83 +88,69 @@
 				u.g.append("path")
 					.datum(topojson.mesh(shp,shp.objects[j]/*,function(a, b) { return a !== b; }*/))
 					.attr("d", u.path)
-					.attr("stroke-width",j == "estados" ? 1 : 0.1)
-					.attr("class", "state_contour")
-					.on("click",function(e){
-						var x, y, k;
+					.attr("stroke-width",j == "estados" || j != "municipios" ? 1 : 0.1)
+					.attr("class", "state_contour");
 
-						if (d && u.centered !== d) {
-							var centroid = u.path.centroid(d);
-							x = centroid[0];
-							y = centroid[1];
-							k = 4;
-							u.centered = d;
-						} else {
-							x = u.getScreenSize().x / 2;
-							y = u.getScreenSize().y / 2;
-							k = 1;
-							u.centered = null;
-						}
-
-						g.selectAll("path")
-							.classed("active", u.centered && function(d) { return d === u.centered; });
-
-						g.transition()
-							.duration(750)
-							.attr("transform", "translate(" + u.getScreenSize().x / 2 + "," + u.getScreenSize().y / 2 + ")scale(" + k + ")translate(" + -x + "," + -y + ")")
-							.style("stroke-width", 1.5 / k + "px");
-					});
-
-			}
-			var a = d3.select("g").node().getBoundingClientRect();
-			//console.log(d3.event.transform);
+			}			
 			
 		},
+		size: null,
 		zoomed: function() {
-			console.log(d3.event.transform);
+			//console.log(d3.event.transform);
 			u.g.attr("transform", d3.event.transform);
 		},
 		config: {
 			states: "data/br-states.json",
 			municipios: "data/municipios.json"
+			//municipios: "topo/ac.json"
 			/*states: "data/br-states.json",
 			municipios: "data/municipioCompleted.json"*/
 		},
 		scale: function (){
 			//u.getScreenSize().x - 200
 			s = 600;
-			return u.getScreenSize().x - 200;
+			return u.getScreenSize().x;
+		},
+		sizeChange: function (){
+			//d3.select("g").attr("transform", "scale(" +  + ")");
 		},
 		load: function (url,reset = false) {
 			if(reset){
 				console.log("reset")
-				d3.select("svg").remove();
+				d3.selectAll("svg").remove();
 			}
-			if(u.config.municipios != url || reset){ 
+
+			d3.select(window)
+    			.on("load", u.sizeChange);
+
+			//if(u.config.municipios == url || reset){ 
 				svg = d3.select("body").append("svg")
 							.attr("width", u.getScreenSize().x)
 							.attr("height", u.getScreenSize().y),
 					g = svg.append("g");
+				u.svg = svg;
 				u.g = g;
 				var zoom = d3.zoom()
 						     .scaleExtent([1, 40])
 						     .translateExtent([[-100, -100], [u.getScreenSize().x , u.getScreenSize().y ]])
 							 .on("zoom", u.zoomed);
+				u.zoom = zoom;
 				svg.call(zoom);
 
-				var projection = d3.geoMercator()
-								   .scale(u.scale())
-								   .center([-52, -15])
+				/*var projection = d3.geoMercator()
+								   //.scale(1200)
+								   //.center([-52, -15])
 								   .translate([u.getScreenSize().x / 2, u.getScreenSize().y / 2]),
+								   //.translate([u.getScreenSize().x / 2, u.getScreenSize().y / 2]),
 					path = d3.geoPath()
 							 .projection(projection);
 
-				u.path = path;
+				u.path = path;*/
 				u.map = d3.map();
 				u.cor = d3.scaleThreshold()
-					    .domain([15, 30, 45, 60, 75, 90])
+					    .domain([10,15, 30, 45, 60, 75, 90])
 					    .range(["#FFFFC1", "#FFFF4F", "#D5FF33", "#04FF04", "#08D92E", "#08A463", "#006E91"]);
-			}
+			//}
 			d3.queue()
 				.defer(d3.json, url)
 				.defer(d3.tsv,"data/enempardo.tsv", function(d) {
@@ -141,7 +164,7 @@
 		}
 	};
 	form.main();
-	u.load(u.config.states);
+	//u.load(u.config.states);
 	u.load(u.config.municipios);
 
 })(window);
