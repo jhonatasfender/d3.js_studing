@@ -1,5 +1,3 @@
-
-// Define map size on screen
 (function(w){
 	var form = {
 		f: function(d) {
@@ -43,68 +41,39 @@
 
 			for (var j in shp.objects) {
 				u.size = d3.selectAll("g").node().getBBox();
-				//console.log(u.size);
-				/*var projection = d3.geoMercator()
-								   .scale(490 / 2 / Math.PI)
-								   .center(d3.geoCentroid(topojson.feature(shp,shp.objects[j])))
-								   .translate([u.getScreenSize().x/2, u.getScreenSize().y/2]),
-					path = d3.geoPath()
-							 .projection(projection);
-
-				u.path = path;*/
 				var center = d3.geoCentroid(topojson.feature(shp,shp.objects[j]));
 				var scale  = 100;
 				var offset = [u.getScreenSize().x/2, u.getScreenSize().y/2];
 				u.projection = d3.geoMercator().scale(scale).center(center)
 				.translate(offset);
-
-				// create the path
 				u.path = d3.geoPath().projection(u.projection);
-				// using the path determine the bounds of the current map and use 
-				// these to determine better values for the scale and translation
 				var bounds  = u.path.bounds(topojson.feature(shp,shp.objects[j]));
 				var hscale  = scale*u.getScreenSize().x  / (bounds[1][0] - bounds[0][0]);
 				var vscale  = scale*u.getScreenSize().y / (bounds[1][1] - bounds[0][1]);
 				var scale   = (hscale < vscale) ? hscale : vscale;
 				var offset  = [(u.getScreenSize().x - (bounds[0][0] + bounds[1][0])/2),
 				    (u.getScreenSize().y - (bounds[0][1] + bounds[1][1])/2) - 10];
-
-				// new projection
 				u.projection = d3.geoMercator().center(center)
 				.scale(scale - 500).translate(offset);
 				u.path = u.path.projection(u.projection);
-
-				u.g.selectAll("." + j)
-					.data(topojson.feature(shp,shp.objects[j]).features)
-					.enter()
-					.append("path")
-					.attr("fill", function(d) { 
+				u.g.selectAll("." + j).data(topojson.feature(shp,shp.objects[j]).features)
+					.enter().append("path").attr("fill", function(d) { 
 						var n = d.properties.nome == undefined ? d.properties.NM_MUNICIP : d.properties.nome.toUpperCase(),r = u.cor(u.map.get(n));
 						return r == undefined ? '#FFFFFF' : r;
-					})
-					.attr('class','state')
-					.attr("d", u.path);
+					}).attr('class','state').attr("d", u.path);
 
-				u.g.append("path")
-					.datum(topojson.mesh(shp,shp.objects[j]/*,function(a, b) { return a !== b; }*/))
-					.attr("d", u.path)
-					.attr("stroke-width",j == "estados" || j != "municipios" ? 1 : 0.1)
+				u.g.append("path").datum(topojson.mesh(shp,shp.objects[j]/*,function(a, b) { return a !== b; }*/))
+					.attr("d", u.path).attr("stroke-width",j == "estados" || j != "municipios" ? 1 : 0.1)
 					.attr("class", "state_contour");
-
-			}			
-			
+			}
 		},
 		size: null,
 		zoomed: function() {
-			//console.log(d3.event.transform);
 			u.g.attr("transform", d3.event.transform);
 		},
 		config: {
 			states: "data/br-states.json",
 			municipios: "data/municipios.json"
-			//municipios: "topo/ac.json"
-			/*states: "data/br-states.json",
-			municipios: "data/municipioCompleted.json"*/
 		},
 		scale: function (){
 			//u.getScreenSize().x - 200
@@ -122,8 +91,6 @@
 
 			d3.select(window)
     			.on("load", u.sizeChange);
-
-			//if(u.config.municipios == url || reset){ 
 				svg = d3.select("body").append("svg")
 							.attr("width", u.getScreenSize().x)
 							.attr("height", u.getScreenSize().y),
@@ -136,35 +103,19 @@
 							 .on("zoom", u.zoomed);
 				u.zoom = zoom;
 				svg.call(zoom);
-
-				/*var projection = d3.geoMercator()
-								   //.scale(1200)
-								   //.center([-52, -15])
-								   .translate([u.getScreenSize().x / 2, u.getScreenSize().y / 2]),
-								   //.translate([u.getScreenSize().x / 2, u.getScreenSize().y / 2]),
-					path = d3.geoPath()
-							 .projection(projection);
-
-				u.path = path;*/
 				u.map = d3.map();
 				u.cor = d3.scaleThreshold()
 					    .domain([10,15, 30, 45, 60, 75, 90])
 					    .range(["#FFFFC1", "#FFFF4F", "#D5FF33", "#04FF04", "#08D92E", "#08A463", "#006E91"]);
-			//}
 			d3.queue()
 				.defer(d3.json, url)
 				.defer(d3.tsv,"data/enempardo.tsv", function(d) {
-					//console.log(d.municipio); 
 					u.map.set(d.municipio, d.percentual); 
 				})
 				.await(u.ready);
-
-			
-			//d3.select(self.frameElement).style("height", u.height + "px");
 		}
 	};
 	form.main();
-	//u.load(u.config.states);
 	u.load(u.config.municipios);
 
 })(window);
