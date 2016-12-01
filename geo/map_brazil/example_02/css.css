@@ -1,0 +1,64 @@
+/*.state {
+	fill: none;
+	stroke: #fff;
+	stroke-linejoin: round;
+}*/
+.state_contour {
+	fill: none;
+	stroke: black;
+	stroke-linejoin: round;
+}
+.mapas {
+	position: absolute;
+    width: 243px;
+}
+.mapas .filtros-mapa {
+    /* position: absolute; */
+    width: 227px; 
+    margin-top: 20px;
+    margin-left: 15px;
+    background: rgba(0,0,0,0.4);
+    padding: 10px 10px;
+}
+
+.mapas span.instrucao {
+    width: 80%;
+    text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.35);
+    text-align: left;
+    font-size: 14px;
+    color: #fff;
+    float: left;
+    text-align: left;
+    font-weight: bold;
+}
+.mapas .filtros-mapa i, .mapas .informacoes i, .mapas .legenda i.close {
+    width: 32px;
+    height: 32px;
+    line-height: 31px;
+    font-size: 20px;
+    text-align: center;
+}
+.mapas i.close {
+    background-color: #fff;
+    border: 1px solid #e5e5e5;
+    opacity: 0.85;
+    border-radius: 2px;
+    float: right;
+    margin-top: 3px;
+    font-weight: bold;
+    color: #646464;
+}
+
+.mapas .filtros-mapa label.amarelo {
+    width: 100%;
+    font-size: 14px;
+    font-weight: bold;
+    color: #f4d632;
+    margin: 10px 0px 8px;
+    text-align: left;
+    text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.35);
+}
+/*.estados.AC {
+fill: #f00;
+
+}*/
