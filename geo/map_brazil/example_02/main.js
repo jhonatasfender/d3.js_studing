@@ -5,9 +5,30 @@
                 if(select.value.toLowerCase() == "todos")
                     u.load(u.config.municipios, true);
                 else {
-                    console.log(u.uf[select.value]);
-                    u.load("topo/" + select.value.toLowerCase() + ".json", true);
+                    form.button.remove();
+                    if (form.selectM != undefined) {
+                        form.labelM.remove();
+                        form.selectM.remove();
+                    } else {
+                        u.load("topo/" + select.value.toLowerCase() + ".json", true);
+                    }
+
+                    form.labelM = form.divFormGroup.append('label').attr('class', 'amarelo').text('Selecione o Municipio:');
+                    form.selectM = form.divFormGroup.append('select').attr('id', 'estados').attr('class', 'selectpicker form-control');
+                    for (var j = 0; j <= u.uf[select.value].length; j++) {
+                        form.selectM.append('option').attr('value', u.uf[select.value][j]).text(u.uf[select.value][j]);
+                    }
+                    form.button = form.filtro.append('button')
+                        .attr('class', 'btn btn-primary btn-lg btn-block btn-mapa')
+                        .text('OK')
+                        .on('click', form.f);
                 }
+            },
+            button: function () {
+                form.button = form.filtro.append('button')
+                    .attr('class', 'btn btn-primary btn-lg btn-block btn-mapa')
+                    .text('OK')
+                    .on('click', form.f);
             },
             main: function() {
                 form.body = d3.select("body");
@@ -19,18 +40,14 @@
                 form.divFormGroup = form.filtro.append('div').attr('class', 'form-group');
                 form.label = form.divFormGroup.append('label').attr('class', 'amarelo').text('Selecione UF:');
                 form.select = form.divFormGroup.append('select').attr('id', 'estados').attr('class', 'selectpicker form-control');
-                for(var j in u.uf.length) { 
-                    console.log(u.uf[j]);
+                for (var j = 0; j <= u.ufs.length; j++) {
                     form.select.append('option').attr('value', u.ufs[j]).text(u.ufs[j]);
                 }
-                form.button = form.filtro.append('button')
-                    .attr('class', 'btn btn-primary btn-lg btn-block btn-mapa')
-                    .text('OK')
-                    .on('click', form.f);
+                form.button();
             }
         },
         u = {
-            //ufs: ["Todos", "AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"],
+            ufs: ["Todos", "AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"],
             g: null,
             path: null,
             map: null,
@@ -40,6 +57,9 @@
             zoom: null,
             svg: null,
             divLabel: null,
+            this: null,
+            dubleClick: 0,
+            checkedThisPath: null,
             getScreenSize: function() {
                 var d = document,
                     e = d.documentElement,
@@ -48,6 +68,66 @@
                     y = w.innerHeight || e.clientHeight || g.clientHeight;
 
                 return {x: x,y: y};
+            },
+            mousemove:  function(d) {
+                var mouse = d3.mouse(u.svg.node()).map(function(d) {
+                    return parseInt(d);
+                });
+
+                if(u.this != this) {
+                    u.this = d3.select(this)
+                    .style("fill",'#f2f2f2')
+                    .style("stroke",'#cbcdcd')
+                    .style("stroke-width",'0.2px');
+                }
+                u.this = this;
+                var n = d.properties.nome == undefined ? d.properties.NM_MUNICIP : d.properties.nome.toUpperCase(),
+                    r = u.map.get(n);
+                u.divLabel
+                    .attr('style', 'display:block;left:' + (mouse[0] + 15) + 'px; top:' + (mouse[1] - 35) + 'px')
+                    .html(
+                        (d.properties.nome == undefined ? d.properties.NM_MUNICIP : d.properties.nome) + "<br>" +
+                        "Percentual: " + ( r == undefined ? "0.0" : r ) + "%"
+                    );
+            },
+            mouseout: function(d) {
+                d3.select(this)
+                .style("fill", u.fillColor)
+                .style("stroke",'');
+
+                u.divLabel.attr('style', 'display:nome').html("");
+            },
+            fillColor: function(d) {
+                var n = d.properties.nome == undefined ? d.properties.NM_MUNICIP : d.properties.nome.toUpperCase(),
+                    r = u.cor(u.map.get(n));
+                return r == undefined ? '#FFFFFF' : r;
+            },
+            click: function (d){
+                if(u.dubleClick == 1 && u.checkedThisPath == d) { 
+                    u.dubleClick = 0; 
+                    u.svg.transition()
+                      .duration(750)
+                      // .call( zoom.transform, d3.zoomIdentity.translate(0, 0).scale(1) ); // not in d3 v4
+                      .call( u.zoom.transform, d3.zoomIdentity ); // updated for d3 v4
+                    //return false;
+                } else {
+                    u.dubleClick = 0; 
+                    u.dubleClick++;
+                    u.checkedThisPath = d;
+                    var bounds = u.path.bounds(d),
+                      dx = bounds[1][0] - bounds[0][0],
+                      dy = bounds[1][1] - bounds[0][1],
+                      x = (bounds[0][0] + bounds[1][0]) / 2,
+                      y = (bounds[0][1] + bounds[1][1]) / 2,
+                      scale = Math.max(1, Math.min(8, 0.9 / Math.max(dx / u.getScreenSize().x, dy / u.getScreenSize().y))),
+                      translate = [u.getScreenSize().x / 2 - scale * x, u.getScreenSize().y / 2 - scale * y];
+
+                    u.svg.transition()
+                      .duration(750)
+                      // .call(zoom.translate(translate).scale(scale).event); // not in d3 v4
+                      .call( u.zoom.transform, d3.zoomIdentity.translate(translate[0],translate[1]).scale(scale) ); // updated for d3 v4
+
+                }
             },
             ready: function(error, shp) {
                 if(error) throw error;
@@ -77,43 +157,25 @@
                         .data(topojson.feature(shp, shp.objects[j]).features)
                         .enter()
                         .append("path")
-                        .attr("fill", function(d) {
-                            var n = d.properties.nome == undefined ? d.properties.NM_MUNICIP : d.properties.nome.toUpperCase(),
-                                r = u.cor(u.map.get(n));
-                            return r == undefined ? '#FFFFFF' : r;
-                        })
+                        .attr("fill", u.fillColor)
                         .attr('class', 'state')
                         .attr("d", u.path)
-                        .on('mousemove', function(d) {
-                            var mouse = d3.mouse(u.svg.node()).map(function(d) {
-                                return parseInt(d);
-                            });
-
-                            var n = d.properties.nome == undefined ? d.properties.NM_MUNICIP : d.properties.nome.toUpperCase(),
-                                r = u.map.get(n);
-                            u.divLabel
-                            	.attr('style', 'display:block;left:' + (mouse[0] + 15) + 'px; top:' + (mouse[1] - 35) + 'px')
-                        		.html(
-                                    (d.properties.nome == undefined ? d.properties.NM_MUNICIP : d.properties.nome) + "<br>" +
-                                    "Percentual: " + ( r == undefined ? "0.0" : r ) + "%"
-                                );
-                            //console.log(d.properties);
-                        })
-		                .on('mouseout', function(d) {
-		                    u.divLabel.attr('style', 'display:nome').html("");
-		                });
+                        .on('mousemove', u.mousemove)
+                        .on('mouseout', u.mouseout)
+                        .on('click', u.click)
+                        .attr('m', function (d){
+                            return d.properties.NM_MUNICIP != undefined ? d.properties.NM_MUNICIP : null;
+                        });
                     u.g.append("path")
                         .datum(topojson.mesh(shp, shp.objects[j] /*,function(a, b) { return a !== b; }*/ ))
                         .attr("d", u.path)
-                        .attr("stroke-width", j == "estados" || j != "municipios" ? 1 : 0.1)
+                        .attr("stroke-width", 0.2)
                         .attr("class", "state_contour");
                 }
             },
             size: null,
             zoomed: function() {
-				/*d3.selectAll("path").attr("stroke-width",function (){
-					console.log(f);
-				});*/
+                u.g.selectAll('path').style("stroke-width", 0.2 / d3.event.transform.k + "px");
             	u.divLabel.attr('style', 'display:nome').html("");
                 u.g.attr("transform", d3.event.transform);
             },
@@ -130,11 +192,8 @@
                 //d3.select("g").attr("transform", "scale(" +  + ")");
             },
             load: function(url, reset = false) {
-                if(reset) {
-                    d3.selectAll("svg").remove();
-                }
-                d3.select(window)
-                    .on("load", u.sizeChange);
+                if(reset) d3.selectAll("svg").remove();
+
                 var divLabel = d3.select("body")
                     .append("div")
                     .attr('class', 'divLabel'), 
@@ -158,16 +217,17 @@
                     .range(["#FFFFC1", "#FFFF4F", "#D5FF33", "#04FF04", "#08D92E", "#08A463", "#006E91"]);
                 d3.queue()
                     .defer(d3.json, url)
-                    .defer(d3.tsv, "data/enempardo.tsv", function(d) {
-                        if(u.uf[d.uf] == undefined)
-                            u.uf[d.uf] = new Array();
-                        u.uf[d.uf].push(d.municipio);
-                        u.map.set(d.municipio, d.percentual);
-                    })
+                    .defer(d3.tsv, "data/enempardo.tsv", u.tsv)
                     .await(u.ready);
+            },
+            tsv: function(d) {
+                if(u.uf[d.uf] == undefined)
+                    u.uf[d.uf] = new Array();
+                u.uf[d.uf].push(d.municipio);
+                u.map.set(d.municipio, d.percentual);
             }
         };
+    form.main();
     u.uf = new Array();
     u.load(u.config.municipios);
-    form.main();
 })(window);
