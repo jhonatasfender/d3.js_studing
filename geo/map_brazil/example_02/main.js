@@ -7,15 +7,39 @@
                 else {
                     form.button.remove();
                     if (form.selectM != undefined) {
+                        var selectM = document.getElementById("mun");
+                        if(selectM.value != "") {
+                            var a = d3.selectAll("path");
+                            a.each(function(d){
+                                for (var i in d.properties) {
+                                    if (i == 'NM_MUNICIP')
+                                        console.log(d.properties[i]);
+                                    if (i == 'NM_MUNICIP' && d.properties[i] == selectM.value) {
+                                        var bounds = u.path.bounds(d),
+                                        dx = bounds[1][0] - bounds[0][0],
+                                        dy = bounds[1][1] - bounds[0][1],
+                                        x = (bounds[0][0] + bounds[1][0]) / 2,
+                                        y = (bounds[0][1] + bounds[1][1]) / 2,
+                                        scale = Math.max(1, Math.min(8, 0.9 / Math.max(dx / u.getScreenSize().x, dy / u.getScreenSize().y))),
+                                        translate = [u.getScreenSize().x / 2 - scale * x, u.getScreenSize().y / 2 - scale * y];
+
+                                        u.svg.transition()
+                                            .duration(750)
+                                            // .call(zoom.translate(translate).scale(scale).event); // not in d3 v4
+                                            .call( u.zoom.transform, d3.zoomIdentity.translate(translate[0],translate[1]).scale(scale) ); // updated for d3 v4
+                                    }
+                                }
+                            });
+                        }
                         form.labelM.remove();
                         form.selectM.remove();
-                    } else {
-                        u.load("topo/" + select.value.toLowerCase() + ".json", true);
-                    }
+                    } 
 
+                    u.load("topo/" + select.value.toLowerCase() + ".json", true);
                     form.labelM = form.divFormGroup.append('label').attr('class', 'amarelo').text('Selecione o Municipio:');
-                    form.selectM = form.divFormGroup.append('select').attr('id', 'estados').attr('class', 'selectpicker form-control');
-                    for (var j = 0; j <= u.uf[select.value].length; j++) {
+                    form.selectM = form.divFormGroup.append('select').attr('id', 'mun').attr('class', 'selectpicker form-control');
+                    form.selectM.append('option').attr('value', '').text('Selecione um municipio!');
+                    for (var j = 0; j < u.uf[select.value].length; j++) {
                         form.selectM.append('option').attr('value', u.uf[select.value][j]).text(u.uf[select.value][j]);
                     }
                     form.button = form.filtro.append('button')
@@ -223,6 +247,7 @@
             tsv: function(d) {
                 if(u.uf[d.uf] == undefined)
                     u.uf[d.uf] = new Array();
+                console.log(d.municipio);
                 u.uf[d.uf].push(d.municipio);
                 u.map.set(d.municipio, d.percentual);
             }
