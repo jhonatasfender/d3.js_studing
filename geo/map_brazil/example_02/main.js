@@ -1,20 +1,19 @@
 (function(w) {
     var form = {
             f: function(d) {
-                var select = document.getElementById("estados");
+                var select = document.getElementById("estados"),selectM ;
                 if(select.value.toLowerCase() == "todos")
                     u.load(u.config.municipios, true);
                 else {
                     form.button.remove();
                     if (form.selectM != undefined) {
-                        var selectM = document.getElementById("mun");
+                        selectM = document.getElementById("mun");
                         if(selectM.value != "") {
                             var a = d3.selectAll("path");
                             a.each(function(d){
                                 for (var i in d.properties) {
-                                    if (i == 'NM_MUNICIP')
-                                        console.log(d.properties[i]);
-                                    if (i == 'NM_MUNICIP' && d.properties[i] == selectM.value) {
+                                    
+                                    if (i == 'NM_MUNICIP' && u.replaceSpecialChars(d.properties[i]) == selectM.value) {
                                         var bounds = u.path.bounds(d),
                                         dx = bounds[1][0] - bounds[0][0],
                                         dy = bounds[1][1] - bounds[0][1],
@@ -40,7 +39,10 @@
                     form.selectM = form.divFormGroup.append('select').attr('id', 'mun').attr('class', 'selectpicker form-control');
                     form.selectM.append('option').attr('value', '').text('Selecione um municipio!');
                     for (var j = 0; j < u.uf[select.value].length; j++) {
-                        form.selectM.append('option').attr('value', u.uf[select.value][j]).text(u.uf[select.value][j]);
+                        var option = form.selectM.append('option').attr('value', u.uf[select.value][j]).text(u.uf[select.value][j]);
+                        if(selectM != undefined && selectM.value == u.uf[select.value][j]) {
+                            option.attr("selected","selected");
+                        }
                     }
                     form.button = form.filtro.append('button')
                         .attr('class', 'btn btn-primary btn-lg btn-block btn-mapa')
@@ -247,9 +249,19 @@
             tsv: function(d) {
                 if(u.uf[d.uf] == undefined)
                     u.uf[d.uf] = new Array();
-                console.log(d.municipio);
                 u.uf[d.uf].push(d.municipio);
                 u.map.set(d.municipio, d.percentual);
+            },
+            replaceSpecialChars: function (str){
+                str = str.replace(/[ÀÁÂÃÄÅ]/,"A");
+                str = str.replace(/[àáâãäå]/,"a");
+                str = str.replace(/[ÈÉÊË]/,"E");
+                str = str.replace(/[Ç]/,"C");
+                str = str.replace(/[ç]/,"c");
+
+                // o resto
+
+                return str.replace(/[^a-z0-9]/gi,''); 
             }
         };
     form.main();
